@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { View, TextInput, Button, Text, Alert, StyleSheet } from 'react-native';
 import { signInWithEmailAndPassword } from 'firebase/auth';
+import * as LocalAuthentication from 'expo-local-authentication';
+import * as SecureStore from 'expo-secure-store';
 import { auth } from '../config/firebase';
 
 export default function LoginScreen({ navigation }) {
@@ -10,10 +12,40 @@ export default function LoginScreen({ navigation }) {
   const handleLogin = async () => {
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      // Tidak perlu navigate manual — RootNavigator otomatis
-      // berpindah ke AppStack karena user state berubah di AuthContext
     } catch (e) {
       Alert.alert('Login Gagal', e.message);
+    }
+  };
+
+  const handleBiometric = async () => {
+    const token = await SecureStore.getItemAsync('auth_token');
+    if (!token) {
+      Alert.alert('Belum ada sesi', 'Login dulu dengan email & password.');
+      return;
+    }
+
+    const hasHardware = await LocalAuthentication.hasHardwareAsync();
+    if (!hasHardware) {
+      Alert.alert('Tidak tersedia', 'Perangkat tidak mendukung biometric.');
+      return;
+    }
+
+    const isEnrolled = await LocalAuthentication.isEnrolledAsync();
+    if (!isEnrolled) {
+      Alert.alert('Belum terdaftar', 'Daftarkan dulu Face ID / Fingerprint di pengaturan HP.');
+      return;
+    }
+
+    const result = await LocalAuthentication.authenticateAsync({
+      promptMessage: 'Login dengan biometric',
+      fallbackLabel: 'Gunakan password',
+      cancelLabel: 'Batal',
+    });
+
+    if (result.success) {
+      Alert.alert('Berhasil', 'Welcome back!');
+    } else {
+      Alert.alert('Gagal', 'Biometric tidak cocok, coba lagi.');
     }
   };
 
@@ -35,6 +67,7 @@ export default function LoginScreen({ navigation }) {
         secureTextEntry
       />
       <Button title="Login" onPress={handleLogin} />
+      <Button title="Login dengan Biometric" onPress={handleBiometric} />
       <Text style={styles.link} onPress={() => navigation.navigate('Register')}>
         Belum punya akun? Daftar
       </Text>
