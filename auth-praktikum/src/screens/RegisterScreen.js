@@ -10,7 +10,6 @@ export default function RegisterScreen() {
   const handleRegister = async () => {
     try {
       const cred = await createUserWithEmailAndPassword(auth, email, password);
-      // Langsung kirim email verifikasi setelah akun dibuat
       await sendEmailVerification(cred.user);
       Alert.alert('Sukses', 'Akun dibuat! Cek email untuk verifikasi sebelum login.');
     } catch (e) {
